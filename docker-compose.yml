@@ -1,0 +1,23 @@
+version: "3.9"
+
+# Local dev only. Production uses Supabase/Neon (Phase 7).
+# Run: docker compose up -d
+# Connect: psql postgresql://intelliattach:localdevpass@localhost:5432/intelliattach
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: intelliattach-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: intelliattach
+      POSTGRES_PASSWORD: localdevpass
+      POSTGRES_DB: intelliattach
+    ports:
+      - "5432:5432"
+    volumes:
+      - intelliattach_pgdata:/var/lib/postgresql/data
+      - ./backend/src/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+
+volumes:
+  intelliattach_pgdata:
