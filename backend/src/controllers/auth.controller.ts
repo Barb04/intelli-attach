@@ -36,7 +36,7 @@ function signAccessToken(user: { id: string; role: string; email: string }) {
   return jwt.sign(
     { sub: user.id, role: user.role, email: user.email },
     env.JWT_ACCESS_SECRET,
-    { expiresIn: env.JWT_ACCESS_EXPIRES_IN }
+    { expiresIn: env.JWT_ACCESS_EXPIRES_IN as jwt.SignOptions["expiresIn"] }
   );
 }
 
