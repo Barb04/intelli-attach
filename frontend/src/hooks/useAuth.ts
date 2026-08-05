@@ -1,5 +1,16 @@
 import { useEffect, useState, useCallback } from "react";
 import { API_BASE_URL } from "../lib/api.js";
+
+function decodeAccessToken(token: string): AuthUser | null {
+  try {
+    const payload = token.split(".")[1];
+    const padded = payload + "=".repeat((4 - (payload.length % 4)) % 4);
+    const json = JSON.parse(atob(padded));
+    return { id: json.sub, email: json.email, role: json.role };
+  } catch {
+    return null;
+  }
+}
 interface AuthUser {
   id: string;
   email: string;
@@ -41,6 +52,8 @@ export function useAuth() {
       if (!res.ok) throw new Error("no active session");
       const data = await res.json();
       setAccessToken(data.accessToken);
+      const decodedUser = decodeAccessToken(data.accessToken);
+      if (decodedUser) setUser(decodedUser);
       // NOTE: in a fuller implementation, decode the access token (or add a
       // lightweight /api/auth/me endpoint) to populate `user` here rather
       // than leaving it to be set explicitly by the login page.
