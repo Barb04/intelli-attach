@@ -80,7 +80,7 @@ function setRefreshCookie(res: Response, rawToken: string) {
   res.cookie(REFRESH_COOKIE_NAME, rawToken, {
     httpOnly: true,
     secure: env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: env.NODE_ENV === "production" ? "none" : "lax",
     path: "/api/auth/refresh", // scope the cookie narrowly — the browser
     // only ever attaches it when calling the refresh endpoint, not on every
     // request to the API.
