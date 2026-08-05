@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { openDB, type IDBPDatabase } from "idb";
 import { getAccessToken } from "./useAuth.js";
+import { API_BASE_URL } from "../lib/api.js";
 
 const DB_NAME = "intelli-attach";
 const DB_VERSION = 1;
@@ -73,7 +74,7 @@ export function useOfflineLogbook() {
 
       for (const entry of all) {
         try {
-          const res = await fetch("/api/logbook", {
+          const res = await fetch(`${API_BASE_URL}/api/logbook`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

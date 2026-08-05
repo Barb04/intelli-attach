@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-
+import { API_BASE_URL } from "../lib/api.js";
 interface AuthUser {
   id: string;
   email: string;
@@ -37,7 +37,7 @@ export function useAuth() {
 
   const bootstrapSession = useCallback(async () => {
     try {
-      const res = await fetch("/api/auth/refresh", { method: "POST", credentials: "include" });
+      const res = await fetch(`${API_BASE_URL}/api/auth/refresh`, { method: "POST", credentials: "include" });
       if (!res.ok) throw new Error("no active session");
       const data = await res.json();
       setAccessToken(data.accessToken);
