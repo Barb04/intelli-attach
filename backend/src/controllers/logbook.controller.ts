@@ -186,7 +186,20 @@ export async function getLogbookEntryForApproval(req: Request, res: Response, ne
     // that follows, and recording every read would bloat the audit log
     // without adding meaningful accountability signal.
     res.json({ entry: result.rows[0] });
-  } catch (err) {
+ } catch (err) {
+    // Postgres unique_violation on (attachment_id, entry_date) — the
+    // student already has an entry for this date. Surface this as a
+    // clear 409 instead of letting it bubble up as an opaque 500, so the
+    // frontend can distinguish "you already logged today" from "the
+    // server is actually unreachable."
+    if (
+      err &&
+      typeof err === "object" &&
+      "code" in err &&
+      (err as { code: string }).code === "23505"
+    ) {
+      return next(new AppError("You already have a logbook entry for this date.", 409));
+    }
     next(err);
   }
 }
