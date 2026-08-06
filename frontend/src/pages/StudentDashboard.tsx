@@ -1,16 +1,24 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useOfflineLogbook } from "../hooks/useOfflineLogbook.js";
 import { getAccessToken } from "../hooks/useAuth.js";
 import { API_BASE_URL } from "../lib/api.js";
 
-// TEMPORARY: hardcoded until a "my current attachment" endpoint exists.
-// This id was inserted directly in Supabase for student1@test.com,
-// linked to a test site at Nairobi coordinates with a 150m geofence.
 const ATTACHMENT_ID = "074de6f4-d37c-4a31-8964-8baf711a5f02";
 
 interface SubmitResult {
   withinGeofence: boolean;
   distanceMeters: number;
+}
+
+interface LogbookEntry {
+  id: string;
+  entry_date: string;
+  narrative: string;
+  status: "SUBMITTED" | "APPROVED" | "REJECTED";
+  distance_from_site_m: number;
+  within_geofence: boolean;
+  created_offline: boolean;
+  created_at: string;
 }
 
 function todayISO(): string {
@@ -40,6 +48,31 @@ export function StudentDashboard() {
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [queuedOffline, setQueuedOffline] = useState(false);
 
+  const [entries, setEntries] = useState<LogbookEntry[]>([]);
+  const [isLoadingEntries, setIsLoadingEntries] = useState(true);
+  const [requestingFor, setRequestingFor] = useState<string | null>(null);
+  const [requestMessages, setRequestMessages] = useState<Record<string, string>>({});
+
+  const loadEntries = useCallback(async () => {
+    setIsLoadingEntries(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/logbook/mine`, {
+        headers: { Authorization: `Bearer ${getAccessToken() ?? ""}` },
+      });
+      if (!res.ok) throw new Error("Could not load entries");
+      const data = await res.json();
+      setEntries(data.entries);
+    } catch {
+      // Non-fatal — the submission form still works even if this list fails.
+    } finally {
+      setIsLoadingEntries(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadEntries();
+  }, [loadEntries]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -53,9 +86,6 @@ export function StudentDashboard() {
 
     setIsSubmitting(true);
     try {
-      // GPS is captured on the device but never trusted client-side — the
-      // server re-checks it against the site's registered location via
-      // PostGIS. This is just what we report; the server decides what it means.
       const position = await getCurrentPosition();
       const latitude = position.coords.latitude;
       const longitude = position.coords.longitude;
@@ -89,9 +119,8 @@ export function StudentDashboard() {
           distanceMeters: Math.round(data.entry.distance_from_site_m),
         });
         setNarrative("");
+        await loadEntries();
       } catch {
-        // Offline, or the request otherwise failed — queue it instead of
-        // losing the student's entry. It'll sync automatically once online.
         await queueEntry(entry);
         setQueuedOffline(true);
         setNarrative("");
@@ -100,6 +129,38 @@ export function StudentDashboard() {
       setError(err instanceof Error ? err.message : "Could not get your location.");
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleRequestApproval(entryId: string) {
+    setRequestingFor(entryId);
+    setRequestMessages((prev) => ({ ...prev, [entryId]: "" }));
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/magiclink/issue`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getAccessToken() ?? ""}`,
+        },
+        body: JSON.stringify({ logbookEntryId: entryId }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Could not send the approval request.");
+      }
+
+      const data = await res.json();
+      setRequestMessages((prev) => ({
+        ...prev,
+        [entryId]: `Approval request sent to ${data.supervisorEmail}.`,
+      }));
+    } catch (err) {
+      setRequestMessages((prev) => ({
+        ...prev,
+        [entryId]: err instanceof Error ? err.message : "Something went wrong.",
+      }));
+    } finally {
+      setRequestingFor(null);
     }
   }
 
@@ -163,6 +224,39 @@ export function StudentDashboard() {
           Could not reach the server — entry saved offline and will sync automatically.
         </p>
       )}
+
+      <hr />
+
+      <h2>My Logbook Entries</h2>
+      {isLoadingEntries && <p>Loading…</p>}
+      {!isLoadingEntries && entries.length === 0 && <p>No entries yet.</p>}
+      <ul>
+        {entries.map((entry) => (
+          <li key={entry.id} style={{ marginBottom: "1em" }}>
+            <strong>{entry.entry_date.slice(0, 10)}</strong> — {entry.narrative}
+            <br />
+            Status: {entry.status} —{" "}
+            <span style={{ color: entry.within_geofence ? "green" : "orange" }}>
+              {entry.within_geofence ? "within" : "outside"} geofence (
+              {Math.round(entry.distance_from_site_m)}m)
+            </span>
+            <br />
+            {entry.status === "SUBMITTED" && (
+              <>
+                <button
+                  onClick={() => handleRequestApproval(entry.id)}
+                  disabled={requestingFor === entry.id}
+                >
+                  {requestingFor === entry.id ? "Sending…" : "Request supervisor approval"}
+                </button>
+                {requestMessages[entry.id] && (
+                  <span style={{ marginLeft: "0.5em" }}>{requestMessages[entry.id]}</span>
+                )}
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
