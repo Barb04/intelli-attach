@@ -25,3 +25,8 @@ logbookRouter.post(
   requireScopedApproval("id"),
   logbookController.approveLogbookEntry
 );
+logbookRouter.get(
+  "/:id/for-approval",
+  requireScopedApproval("id"),
+  logbookController.getLogbookEntryForApproval
+);

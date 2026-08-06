@@ -164,4 +164,29 @@ export async function approveLogbookEntry(req: Request, res: Response, next: Nex
   } catch (err) {
     next(err);
   }
+} 
+export async function getLogbookEntryForApproval(req: Request, res: Response, next: NextFunction) {
+  try {
+    const entryId = req.params.id;
+
+    const result = await pool.query(
+      `SELECT le.id, le.entry_date, le.narrative, le.status,
+              le.distance_from_site_m, le.within_geofence, le.created_offline,
+              le.created_at
+       FROM logbook_entries le
+       WHERE le.id = $1`,
+      [entryId]
+    );
+
+    if (result.rowCount === 0) {
+      throw new AppError("Logbook entry not found", 404);
+    }
+
+    // No audit event here — viewing is implicit in the approve/reject flow
+    // that follows, and recording every read would bloat the audit log
+    // without adding meaningful accountability signal.
+    res.json({ entry: result.rows[0] });
+  } catch (err) {
+    next(err);
+  }
 }
