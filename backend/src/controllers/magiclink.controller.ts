@@ -63,7 +63,7 @@ export async function issueMagicLink(req: Request, res: Response, next: NextFunc
       metadata: { logbookEntryId: entry.id, supervisorEmail: entry.supervisor_email },
     });
 
-    const approvalLink = `http://localhost:5173/supervisor/approve?token=${rawToken}`;
+    const approvalLink = `${env.FRONTEND_URL}/supervisor/approve?token=${rawToken}`;
     console.log("\n========== SIMULATED SUPERVISOR NOTIFICATION ==========");
     console.log(`To: ${entry.supervisor_email}`);
     console.log(`Link (channel 1 - email): ${approvalLink}`);
