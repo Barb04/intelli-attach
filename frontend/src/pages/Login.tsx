@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { setAccessToken } from "../hooks/useAuth.js";
+import { setAccessToken, setGlobalUser } from "../hooks/useAuth.js";
 import { API_BASE_URL } from "../lib/api.js";
 
 export function Login() {
@@ -17,7 +17,7 @@ export function Login() {
       const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // required so the refresh cookie gets set
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
 
@@ -28,6 +28,7 @@ export function Login() {
 
       const data = await res.json();
       setAccessToken(data.accessToken);
+      setGlobalUser(data.user);
       navigate(`/${data.user.role.toLowerCase()}/dashboard`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
