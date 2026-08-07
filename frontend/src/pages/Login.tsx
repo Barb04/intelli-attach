@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { setAccessToken, setGlobalUser } from "../hooks/useAuth.js";
 import { API_BASE_URL } from "../lib/api.js";
 
@@ -63,9 +63,12 @@ export function Login() {
             {error}
           </p>
         )}
-        <button type="submit" style={{ width: "100%" }}>
+       <button type="submit" style={{ width: "100%" }}>
           Sign in
         </button>
+        <p style={{ fontSize: "0.85rem", color: "var(--slate)", marginTop: "1rem" }}>
+          Need an account? <Link to="/register">Register</Link>
+        </p>
       </form>
     </div>
   );
