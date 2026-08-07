@@ -29,9 +29,10 @@ export function SupervisorApprove() {
 
   if (!token) {
     return (
-      <div>
-        <h1>Supervisor Approval</h1>
-        <p style={{ color: "red" }}>
+      <div className="page">
+        <div className="eyebrow">Supervisor</div>
+        <h1>Approval</h1>
+        <p className="msg error">
           No approval token found in the URL. Use the link exactly as provided.
         </p>
       </div>
@@ -106,16 +107,19 @@ export function SupervisorApprove() {
   }
 
   return (
-    <div>
-      <h1>Supervisor Approval</h1>
+    <div className="page">
+      <div className="eyebrow">Supervisor</div>
+      <h1>Approval</h1>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {error && <p className="msg error">{error}</p>}
 
       {stage === "pin-entry" && (
-        <form onSubmit={handleVerifyPin}>
-          <p>Enter the 6-digit PIN sent to you separately to view this entry.</p>
-          <label>
-            PIN{" "}
+        <form onSubmit={handleVerifyPin} className="panel">
+          <p style={{ marginTop: 0, color: "var(--slate)" }}>
+            Enter the 6-digit PIN sent to you separately to view this entry.
+          </p>
+          <div className="field">
+            <label>PIN</label>
             <input
               type="text"
               inputMode="numeric"
@@ -124,8 +128,7 @@ export function SupervisorApprove() {
               onChange={(e) => setPin(e.target.value)}
               required
             />
-          </label>
-          <br />
+          </div>
           <button type="submit" disabled={isBusy}>
             {isBusy ? "Verifying…" : "Verify"}
           </button>
@@ -133,50 +136,56 @@ export function SupervisorApprove() {
       )}
 
       {stage === "reviewing" && entry && (
-        <div>
-          <h2>Logbook Entry</h2>
-          <p>
-            <strong>Date:</strong> {entry.entry_date.slice(0, 10)}
-          </p>
-          <p>
-            <strong>Narrative:</strong> {entry.narrative}
-          </p>
-          <p>
-            <strong>Location check:</strong>{" "}
-            <span style={{ color: entry.within_geofence ? "green" : "orange" }}>
-              {entry.within_geofence ? "Within geofence" : "Outside geofence"} (
-              {Math.round(entry.distance_from_site_m)}m from site)
-            </span>
-          </p>
-          <p>
-            <strong>Submitted:</strong>{" "}
-            {entry.created_offline ? "Offline, synced later" : "Live"}
+        <div className="panel">
+          <h2>Logbook entry</h2>
+          <div className="entry-date" style={{ marginBottom: "0.6rem" }}>
+            {entry.entry_date.slice(0, 10)}
+          </div>
+          <p>{entry.narrative}</p>
+
+          <div style={{ margin: "1rem 0" }}>
+            <div className={`geo-readout ${entry.within_geofence ? "within" : "outside"}`}>
+              <span className="geo-label">
+                {entry.within_geofence ? "Within geofence" : "Outside geofence"}
+              </span>
+              <span className="geo-value">
+                {Math.round(entry.distance_from_site_m)}m from site
+              </span>
+            </div>
+          </div>
+
+          <p style={{ fontSize: "0.85rem", color: "var(--slate)" }}>
+            Submitted {entry.created_offline ? "offline, synced later" : "live"}
           </p>
 
-          <label>
-            Comment (optional)
-            <br />
+          <div className="field">
+            <label>Comment (optional)</label>
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               rows={3}
-              cols={50}
             />
-          </label>
-          <br />
-          <button onClick={() => handleDecision("APPROVED")} disabled={isBusy}>
-            Approve
-          </button>{" "}
-          <button onClick={() => handleDecision("REJECTED")} disabled={isBusy}>
-            Reject
-          </button>
+          </div>
+
+          <div style={{ display: "flex", gap: "0.6rem" }}>
+            <button onClick={() => handleDecision("APPROVED")} disabled={isBusy}>
+              Approve
+            </button>
+            <button
+              className="secondary"
+              onClick={() => handleDecision("REJECTED")}
+              disabled={isBusy}
+            >
+              Reject
+            </button>
+          </div>
         </div>
       )}
 
       {stage === "done" && (
-        <p style={{ color: decisionResult === "APPROVED" ? "green" : "orangered" }}>
-          Entry {decisionResult === "APPROVED" ? "approved" : "rejected"}. You may close
-          this page.
+        <p className={`msg ${decisionResult === "APPROVED" ? "" : "error"}`}>
+          Entry {decisionResult === "APPROVED" ? "approved" : "rejected"}. You may close this
+          page.
         </p>
       )}
     </div>

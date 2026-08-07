@@ -38,6 +38,12 @@ function getCurrentPosition(): Promise<GeolocationPosition> {
   });
 }
 
+function statusBadgeClass(status: string) {
+  if (status === "APPROVED") return "badge approved";
+  if (status === "REJECTED") return "badge rejected";
+  return "badge submitted";
+}
+
 export function StudentDashboard() {
   const { pendingCount, isSyncing, queueEntry, syncPendingEntries } = useOfflineLogbook();
 
@@ -171,94 +177,104 @@ export function StudentDashboard() {
   }
 
   return (
-    <div>
-      <h1>Student Dashboard</h1>
-      <p>
-        {pendingCount > 0
-          ? `${pendingCount} entr${pendingCount === 1 ? "y" : "ies"} queued for sync`
-          : "All entries synced"}
-        {isSyncing && " — syncing…"}
-      </p>
-      <button onClick={syncPendingEntries} disabled={isSyncing}>
-        Sync now
-      </button>
+    <div className="page">
+      <div className="eyebrow">Student</div>
+      <h1>Dashboard</h1>
+
+      <div className="panel" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span>
+          {pendingCount > 0
+            ? `${pendingCount} entr${pendingCount === 1 ? "y" : "ies"} queued for sync`
+            : "All entries synced"}
+          {isSyncing && " — syncing…"}
+        </span>
+        <button className="secondary" onClick={syncPendingEntries} disabled={isSyncing}>
+          Sync now
+        </button>
+      </div>
 
       <hr />
 
-      <h2>New Logbook Entry</h2>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>
-            Entry date{" "}
-            <input
-              type="date"
-              value={entryDate}
-              onChange={(e) => setEntryDate(e.target.value)}
-              required
-            />
-          </label>
+      <h2>New logbook entry</h2>
+      <form onSubmit={handleSubmit} className="panel">
+        <div className="field">
+          <label>Entry date</label>
+          <input
+            type="date"
+            value={entryDate}
+            onChange={(e) => setEntryDate(e.target.value)}
+            required
+          />
         </div>
-        <div>
-          <label>
-            Narrative
-            <br />
-            <textarea
-              value={narrative}
-              onChange={(e) => setNarrative(e.target.value)}
-              rows={4}
-              cols={50}
-              required
-            />
-          </label>
+        <div className="field">
+          <label>Narrative</label>
+          <textarea
+            value={narrative}
+            onChange={(e) => setNarrative(e.target.value)}
+            rows={4}
+            required
+          />
         </div>
         <button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Getting location & submitting…" : "Submit entry"}
         </button>
+
+        {error && <p className="msg error">{error}</p>}
+
+        {result && (
+          <div style={{ marginTop: "0.9rem" }}>
+            <div className={`geo-readout ${result.withinGeofence ? "within" : "outside"}`}>
+              <span className="geo-label">
+                {result.withinGeofence ? "Within geofence" : "Outside geofence"}
+              </span>
+              <span className="geo-value">{result.distanceMeters}m from site</span>
+            </div>
+          </div>
+        )}
+
+        {queuedOffline && (
+          <p className="msg info">
+            Could not reach the server — entry saved offline and will sync automatically.
+          </p>
+        )}
       </form>
-
-      {error && <p style={{ color: "red" }}>{error}</p>}
-
-      {result && (
-        <p style={{ color: result.withinGeofence ? "green" : "orange" }}>
-          Entry submitted — {result.withinGeofence ? "within" : "outside"} geofence
-          ({result.distanceMeters}m from site).
-        </p>
-      )}
-
-      {queuedOffline && (
-        <p style={{ color: "blue" }}>
-          Could not reach the server — entry saved offline and will sync automatically.
-        </p>
-      )}
 
       <hr />
 
-      <h2>My Logbook Entries</h2>
+      <h2>My logbook entries</h2>
       {isLoadingEntries && <p>Loading…</p>}
       {!isLoadingEntries && entries.length === 0 && <p>No entries yet.</p>}
-      <ul>
+      <ul className="entry-list">
         {entries.map((entry) => (
-          <li key={entry.id} style={{ marginBottom: "1em" }}>
-            <strong>{entry.entry_date.slice(0, 10)}</strong> — {entry.narrative}
-            <br />
-            Status: {entry.status} —{" "}
-            <span style={{ color: entry.within_geofence ? "green" : "orange" }}>
-              {entry.within_geofence ? "within" : "outside"} geofence (
-              {Math.round(entry.distance_from_site_m)}m)
-            </span>
-            <br />
+          <li key={entry.id} className="entry-item">
+            <div className="entry-date">{entry.entry_date.slice(0, 10)}</div>
+            <p className="entry-narrative">{entry.narrative}</p>
+            <div className="entry-meta">
+              <span className={statusBadgeClass(entry.status)}>{entry.status}</span>
+              <div className={`geo-readout ${entry.within_geofence ? "within" : "outside"}`}>
+                <span className="geo-label">
+                  {entry.within_geofence ? "Within" : "Outside"}
+                </span>
+                <span className="geo-value">
+                  {Math.round(entry.distance_from_site_m)}m
+                </span>
+              </div>
+            </div>
             {entry.status === "SUBMITTED" && (
-              <>
+              <div style={{ marginTop: "0.8rem" }}>
                 <button
+                  className="secondary"
                   onClick={() => handleRequestApproval(entry.id)}
                   disabled={requestingFor === entry.id}
                 >
                   {requestingFor === entry.id ? "Sending…" : "Request supervisor approval"}
                 </button>
                 {requestMessages[entry.id] && (
-                  <span style={{ marginLeft: "0.5em" }}>{requestMessages[entry.id]}</span>
+                  <p style={{ fontSize: "0.85rem", color: "var(--slate)", marginTop: "0.4rem" }}>
+                    {requestMessages[entry.id]}
+                  </p>
                 )}
-              </>
+              </div>
             )}
           </li>
         ))}

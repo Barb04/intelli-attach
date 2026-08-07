@@ -36,23 +36,37 @@ export function Login() {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h1>Intelli-Attach — Sign in</h1>
-      <label>
-        Email
-        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-      </label>
-      <label>
-        Password
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-      </label>
-      {error && <p role="alert">{error}</p>}
-      <button type="submit">Sign in</button>
-    </form>
+    <div className="page" style={{ maxWidth: "380px", paddingTop: "5rem" }}>
+      <div className="eyebrow">Geo-Verified Attachment Log</div>
+      <form onSubmit={handleSubmit} className="panel">
+        <h1>Sign in</h1>
+        <div className="field">
+          <label>Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+        <div className="field">
+          <label>Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
+        {error && (
+          <p role="alert" className="msg error">
+            {error}
+          </p>
+        )}
+        <button type="submit" style={{ width: "100%" }}>
+          Sign in
+        </button>
+      </form>
+    </div>
   );
 }
