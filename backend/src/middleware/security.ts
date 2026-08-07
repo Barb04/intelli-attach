@@ -3,6 +3,7 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import type { CorsOptions } from "cors";
 import { env } from "../config/env.js";
+import { AppError } from "./errorHandler.js";
 
 /**
  * Helmet sets ~15 security-related HTTP headers with one call. The two worth
@@ -39,7 +40,12 @@ const corsOptions: CorsOptions = {
     if (!origin || env.corsAllowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error(`Origin ${origin} not permitted by CORS policy`));
+      // Using AppError (not a plain Error) here matters: errorHandler.ts
+      // reads .statusCode off AppError instances to pick the response
+      // status. A plain Error has no statusCode, so it was previously
+      // falling through to errorHandler's generic 500 case — even though
+      // a rejected CORS origin is really a 403, not a server fault.
+      callback(new AppError(`Origin ${origin} not permitted by CORS policy`, 403));
     }
   },
   credentials: true,
