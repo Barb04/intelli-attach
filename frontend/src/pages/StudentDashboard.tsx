@@ -109,6 +109,12 @@ export function StudentDashboard() {
           body: JSON.stringify({ ...entry, createdOffline: false }),
         });
 
+        if (res.status === 409) {
+          const data = await res.json();
+          setError(data.error ?? "You already have an entry for this date.");
+          return;
+        }
+
         if (!res.ok) {
           throw new Error(`Server responded ${res.status}`);
         }
