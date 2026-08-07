@@ -3,8 +3,6 @@ import { useOfflineLogbook } from "../hooks/useOfflineLogbook.js";
 import { getAccessToken } from "../hooks/useAuth.js";
 import { API_BASE_URL } from "../lib/api.js";
 
-const ATTACHMENT_ID = "074de6f4-d37c-4a31-8964-8baf711a5f02";
-
 interface SubmitResult {
   withinGeofence: boolean;
   distanceMeters: number;
@@ -47,6 +45,11 @@ function statusBadgeClass(status: string) {
 export function StudentDashboard() {
   const { pendingCount, isSyncing, queueEntry, syncPendingEntries } = useOfflineLogbook();
 
+  // Looked up once on mount instead of hardcoded — see loadMyAttachment below.
+  const [attachmentId, setAttachmentId] = useState<string | null>(null);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [isLoadingAttachment, setIsLoadingAttachment] = useState(true);
+
   const [entryDate, setEntryDate] = useState(todayISO());
   const [narrative, setNarrative] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,6 +61,27 @@ export function StudentDashboard() {
   const [isLoadingEntries, setIsLoadingEntries] = useState(true);
   const [requestingFor, setRequestingFor] = useState<string | null>(null);
   const [requestMessages, setRequestMessages] = useState<Record<string, string>>({});
+
+  const loadMyAttachment = useCallback(async () => {
+    setIsLoadingAttachment(true);
+    setAttachmentError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/attachments/my-attachment`, {
+        headers: { Authorization: `Bearer ${getAccessToken() ?? ""}` },
+      });
+      if (res.status === 404) {
+        setAttachmentError("No attachment record was found for your account. Contact your administrator.");
+        return;
+      }
+      if (!res.ok) throw new Error("Could not load your attachment.");
+      const data = await res.json();
+      setAttachmentId(data.attachment.id);
+    } catch {
+      setAttachmentError("Could not load your attachment. Try refreshing the page.");
+    } finally {
+      setIsLoadingAttachment(false);
+    }
+  }, []);
 
   const loadEntries = useCallback(async () => {
     setIsLoadingEntries(true);
@@ -76,14 +100,20 @@ export function StudentDashboard() {
   }, []);
 
   useEffect(() => {
+    loadMyAttachment();
     loadEntries();
-  }, [loadEntries]);
+  }, [loadMyAttachment, loadEntries]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setResult(null);
     setQueuedOffline(false);
+
+    if (!attachmentId) {
+      setError("Your attachment record hasn't loaded yet. Please wait a moment and try again.");
+      return;
+    }
 
     if (narrative.trim().length < 10) {
       setError("Narrative must be at least 10 characters.");
@@ -97,7 +127,7 @@ export function StudentDashboard() {
       const longitude = position.coords.longitude;
 
       const entry = {
-        attachmentId: ATTACHMENT_ID,
+        attachmentId,
         entryDate,
         narrative,
         latitude,
@@ -198,6 +228,8 @@ export function StudentDashboard() {
         </button>
       </div>
 
+      {attachmentError && <p className="msg error">{attachmentError}</p>}
+
       <hr />
 
       <h2>New logbook entry</h2>
@@ -220,8 +252,12 @@ export function StudentDashboard() {
             required
           />
         </div>
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Getting location & submitting…" : "Submit entry"}
+        <button type="submit" disabled={isSubmitting || isLoadingAttachment || !attachmentId}>
+          {isLoadingAttachment
+            ? "Loading your attachment…"
+            : isSubmitting
+            ? "Getting location & submitting…"
+            : "Submit entry"}
         </button>
 
         {error && <p className="msg error">{error}</p>}
