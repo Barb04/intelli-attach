@@ -15,7 +15,9 @@ type AuditEvent =
   | "LOGBOOK_SUBMITTED"
   | "LOGBOOK_APPROVED"
   | "LOGBOOK_REJECTED"
-  | "GEOFENCE_VIOLATION";
+  | "GEOFENCE_VIOLATION"
+  | "ATTACHMENT_GRADED"
+  | "ATTACHMENT_COMMENTED";
 
 interface AuditParams {
   eventType: AuditEvent;
