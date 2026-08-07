@@ -6,6 +6,35 @@ import { isOwner } from "../middleware/rbac.js";
 import { recordAuditEvent } from "../middleware/auditLogger.js";
 
 /**
+ * The current student's own attachment — used to look up the real
+ * attachmentId at submission time instead of relying on a hardcoded
+ * value in the frontend. A student has at most one active attachment
+ * per the current schema, so this returns a single object, not a list.
+ */
+export async function getMyAttachment(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await pool.query(
+      `SELECT a.id, a.start_date, a.end_date, s.company_name
+       FROM attachments a
+       JOIN attachment_sites s ON s.id = a.site_id
+       WHERE a.student_id = $1
+       ORDER BY a.start_date DESC
+       LIMIT 1`,
+      [req.user!.id]
+    );
+
+    const attachment = result.rows[0];
+    if (!attachment) {
+      throw new AppError("No attachment record found for this student", 404);
+    }
+
+    res.json({ attachment });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
  * All attachments assigned to the currently logged-in assessor, with basic
  * progress info derived from start_date/end_date — lets the dashboard show
  * "Week 6 of 12" without a separate endpoint or any new schema beyond what

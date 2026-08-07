@@ -6,6 +6,13 @@ import * as attachmentController from "../controllers/attachment.controller.js";
 export const attachmentRouter = Router();
 
 attachmentRouter.get(
+  "/my-attachment",
+  authenticate,
+  requireRole("STUDENT"),
+  attachmentController.getMyAttachment
+);
+
+attachmentRouter.get(
   "/mine",
   authenticate,
   requireRole("ASSESSOR"),
