@@ -14,33 +14,6 @@ const submitEntrySchema = z.object({
   createdOffline: z.boolean().optional().default(false),
 });
 
-/**
- * This is the geo-verification core of the whole platform. The student's
- * device reports its own GPS coordinates — which we NEVER trust blindly,
- * because a browser's geolocation API can be spoofed client-side (dev
- * tools, a rooted phone, a modified app). What we actually trust is the
- * server-side PostGIS comparison against the site's REGISTERED location,
- * which the student cannot influence.
- *
- * ST_DWithin(geography, geography, meters) is the PostGIS function doing
- * the real work here. Two things worth explaining if asked:
- *
- * 1. We cast both points to `geography`, not `geometry`. `geometry` treats
- *    coordinates as flat Cartesian points — fine for small-scale abstract
- *    shapes, but WRONG for real-world distance on a sphere, especially at
- *    higher latitudes where a degree of longitude covers less physical
- *    distance than at the equator. `geography` does the distance math on
- *    the actual curved surface of the earth, so "150 meters" means real
- *    meters everywhere on the globe, not degrees.
- *
- * 2. We do this comparison IN THE DATABASE (ST_DWithin), not by pulling
- *    both points into Node and computing Haversine distance in JS. This is
- *    both faster (Postgres/PostGIS is optimized C code for this exact
- *    operation) and, more importantly, keeps the source of truth in one
- *    place — the same query that reads the site's location is the query
- *    that judges distance against it, so there's no window where a stale
- *    or duplicated copy of the site location could drift out of sync.
- */
 export async function submitLogbookEntry(req: Request, res: Response, next: NextFunction) {
   try {
     const body = submitEntrySchema.parse(req.body);
@@ -113,6 +86,19 @@ export async function submitLogbookEntry(req: Request, res: Response, next: Next
 
     res.status(201).json({ entry });
   } catch (err) {
+    // Postgres unique_violation on (attachment_id, entry_date) — the
+    // student already has an entry for this date. Surface this as a
+    // clear 409 instead of letting it bubble up as an opaque 500, so the
+    // frontend can distinguish "you already logged today" from "the
+    // server is actually unreachable."
+    if (
+      err &&
+      typeof err === "object" &&
+      "code" in err &&
+      (err as { code: string }).code === "23505"
+    ) {
+      return next(new AppError("You already have a logbook entry for this date.", 409));
+    }
     next(err);
   }
 }
@@ -133,8 +119,8 @@ export async function listMyLogbookEntries(req: Request, res: Response, next: Ne
   } catch (err) {
     next(err);
   }
-  
 }
+
 export async function approveLogbookEntry(req: Request, res: Response, next: NextFunction) {
   try {
     const entryId = req.params.id;
@@ -164,7 +150,8 @@ export async function approveLogbookEntry(req: Request, res: Response, next: Nex
   } catch (err) {
     next(err);
   }
-} 
+}
+
 export async function getLogbookEntryForApproval(req: Request, res: Response, next: NextFunction) {
   try {
     const entryId = req.params.id;
@@ -186,20 +173,7 @@ export async function getLogbookEntryForApproval(req: Request, res: Response, ne
     // that follows, and recording every read would bloat the audit log
     // without adding meaningful accountability signal.
     res.json({ entry: result.rows[0] });
- } catch (err) {
-    // Postgres unique_violation on (attachment_id, entry_date) — the
-    // student already has an entry for this date. Surface this as a
-    // clear 409 instead of letting it bubble up as an opaque 500, so the
-    // frontend can distinguish "you already logged today" from "the
-    // server is actually unreachable."
-    if (
-      err &&
-      typeof err === "object" &&
-      "code" in err &&
-      (err as { code: string }).code === "23505"
-    ) {
-      return next(new AppError("You already have a logbook entry for this date.", 409));
-    }
+  } catch (err) {
     next(err);
   }
 }
