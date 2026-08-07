@@ -4,6 +4,7 @@ import { Login } from "./pages/Login.js";
 import { Register } from "./pages/Register.js";
 import { StudentDashboard } from "./pages/StudentDashboard.js";
 import { SupervisorApprove } from "./pages/SupervisorApprove.js";
+import { AssessorDashboard } from "./pages/AssessorDashboard.js";
 
 export default function App() {
   return (
@@ -16,6 +17,14 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={["STUDENT"]}>
               <StudentDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/assessor/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={["ASSESSOR"]}>
+              <AssessorDashboard />
             </ProtectedRoute>
           }
         />
