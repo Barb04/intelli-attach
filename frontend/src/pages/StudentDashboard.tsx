@@ -115,9 +115,14 @@ export function StudentDashboard() {
           body: JSON.stringify({ ...entry, createdOffline: false }),
         });
 
-        if (res.status === 409) {
+       if (res.status === 409) {
           const data = await res.json();
           setError(data.error ?? "You already have an entry for this date.");
+          return;
+        }
+
+        if (res.status === 404) {
+          setError("Your attachment record could not be found. Contact your administrator.");
           return;
         }
 
