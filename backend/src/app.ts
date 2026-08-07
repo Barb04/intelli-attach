@@ -8,6 +8,7 @@ import { healthRouter } from "./routes/health.routes.js";
 import { authRouter } from "./routes/auth.routes.js";
 import { logbookRouter } from "./routes/logbook.routes.js";
 import { magiclinkRouter } from "./routes/magiclink.routes.js";
+import { attachmentRouter } from "./routes/attachment.routes.js";
 
 export function createApp() {
   const app = express();
@@ -57,6 +58,8 @@ export function createApp() {
   app.use("/api/auth", authRouter);
   app.use("/api/logbook", logbookRouter);
   app.use("/api/magiclink", magiclinkRouter);
+  app.use("/api/attachments", attachmentRouter);
+
   // 404 fallback for anything unmatched.
   app.use((req, res) => {
     res.status(404).json({ error: `No route for ${req.method} ${req.path}` });
